@@ -1,35 +1,63 @@
 import streamlit as st
-from reportlab.lib.pagesizes import letter
+import pandas as pd
 from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter
 import io
 
-def formato_co(v):
-    return "$" + format(v, ",.0f").replace(",", ".")
+st.set_page_config(page_title="Agencia Nueva Ilusión", page_icon="🏡")
+st.title("🏡 Agencia de Ventas Nueva Ilusión")
+st.subheader("Simulador Pro: Turbaco y Santa Rosa")
 
-st.title("AGENCIA NUEVA ILUSIÓN")
+with st.form("simulador"):
+    col1, col2 = st.columns(2)
+    with col1:
+        cliente = st.text_input("Nombre del Cliente")
+        proyecto = st.selectbox("Proyecto", ["Turbaco", "Santa Rosa", "Cartagena"])
+        precio_total = st.number_input("Precio Total ($)", min_value=0, step=1000000)
+    with col2:
+        cuota_inicial = st.number_input("Cuota Inicial / Bono ($)", min_value=0, step=500000)
+        num_cuotas = st.number_input("Meses de plazo", min_value=1, max_value=60, value=12)
+    boton = st.form_submit_button("Generar Plan de Pagos")
 
-# Entradas para Luis Fer
-proy = st.text_input("Proyecto", "AMARU")
-cli = st.text_input("Cliente")
-pre = st.number_input("Precio Lista", 0.0)
-bon = st.number_input("Bono Especial", 0.0)
-sep = st.number_input("Separación", 0.0)
-pct = st.number_input("% Inicial", 30)
+if boton:
+    saldo = precio_total - cuota_inicial
+    valor_cuota = saldo / num_cuotas
+    
+    st.divider()
+    st.write(f"### Plan de pagos para: {cliente}")
+    
+    # Crear la tabla de amortización
+    datos_tabla = []
+    saldo_actual = saldo
+    for i in range(1, num_cuotas + 1):
+        saldo_actual -= valor_cuota
+        datos_tabla.append({
+            "Mes": i,
+            "Cuota": f"${valor_cuota:,.0f}",
+            "Saldo Restante": f"${max(0, saldo_actual):,.0f}"
+        })
+    
+    df = pd.DataFrame(datos_tabla)
+    st.table(df) # Muestra la tabla en la pantalla
 
-# Cálculos automáticos
-base = pre - bon
-v_ini = base * (pct / 10) # Ajuste para el simulador
-r_ini = v_ini - sep
-s_lot = base - v_ini
+    def generar_pdf(nombre, loc, total, inicial, saldo_fin, meses, mensualidad):
+        buffer = io.BytesIO()
+        p = canvas.Canvas(buffer, pagesize=letter)
+        p.setFont("Helvetica-Bold", 14)
+        p.drawString(100, 750, "COTIZACIÓN OFICIAL - AGENCIA NUEVA ILUSIÓN")
+        p.setFont("Helvetica", 11)
+        p.drawString(100, 720, f"Cliente: {nombre}")
+        p.drawString(100, 705, f"Ubicación: {loc}")
+        p.drawString(100, 690, f"Precio Total: ${total:,.0f}")
+        p.drawString(100, 675, f"Cuota Inicial: ${inicial:,.0f}")
+        p.drawString(100, 660, f"Saldo a Financiar: ${saldo_fin:,.0f}")
+        p.drawString(100, 645, f"Cuotas: {meses} de ${mensualidad:,.0f}")
+        p.drawString(100, 600, "Firma: Luis Fernando Ortega Arteaga")
+        p.showPage()
+        p.save()
+        buffer.seek(0)
+        return buffer
 
-if st.button("GENERAR COTIZACIÓN"):
-    buf = io.BytesIO()
-    p = canvas.Canvas(buf, pagesize=letter)
-    p.drawString(100, 750, f"PROYECTO: {proy}")
-    p.drawString(100, 730, f"CLIENTE: {cli}")
-    p.drawString(100, 710, f"PRECIO LISTA: {formato_co(pre)}")
-    p.drawString(100, 690, f"BASE CÁLCULO: {formato_co(base)}")
-    p.drawString(100, 670, f"TOTAL INICIAL: {formato_co(v_ini)}")
-    p.drawString(100, 650, f"SALDO LOTE: {formato_co(s_lot)}")
-    p.save()
-    st.download_button("📥 DESCARGAR PDF", buf.getvalue(), f"Cotizacion_{cli}.pdf", "application/pdf")
+    pdf = generar_pdf(cliente, proyecto, precio_total, cuota_inicial, saldo, num_cuotas, valor_cuota)
+    st.download_button("📥 Descargar PDF para el Cliente", pdf, f"Plan_{cliente}.pdf", "application/pdf")
+
