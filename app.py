@@ -2,116 +2,92 @@ import streamlit as st
 import pandas as pd
 import datetime
 
-# Configuración de estilos para máxima visibilidad y contraste
-st.set_page_config(page_title="Simulador de Pagos", page_icon="🏡")
+# 1. Configuración de Marca y Visibilidad (Fondo Oscuro / Letras Claras)
+st.set_page_config(page_title="Agencia Nueva Ilusión", page_icon="🏡")
 
 st.markdown("""
     <style>
-    /* Fondo principal del simulador */
-    .stApp {
-        background-color: #0B2447;
-        color: white;
-    }
+    .stApp { background-color: #0B2447; color: white; }
     
-    /* Selector específico para forzar el color blanco en las celdas de la tabla */
-    .stTable td {
-        color: white !important;
-        font-weight: 400;
-        font-size: 16px;
-    }
+    /* Preguntas en Dorado */
+    .pregunta { font-weight: bold; font-size: 19px; color: #C5A880; margin-top: 15px; margin-bottom: 5px; display: block; }
     
-    /* Estilo para los encabezados de la tabla con color de acento */
-    .stTable th {
-        color: #C5A880 !important;
-        background-color: #19376D !important;
-        font-weight: bold;
-    }
-    
-    /* Diseño de las etiquetas de las preguntas */
-    .pregunta {
-        font-weight: bold;
-        font-size: 19px;
-        color: #C5A880;
-        margin-top: 15px;
-        margin-bottom: 5px;
-        display: block;
-    }
-    
-    /* Ajuste de métricas para mayor visibilidad */
-    [data-testid="stMetricValue"] {
-        color: #C5A880 !important;
-    }
+    /* FORZAR COLOR BLANCO EN LA TABLA */
+    .stTable td { color: white !important; font-size: 16px !important; }
+    .stTable th { color: #C5A880 !important; background-color: #19376D !important; }
+
+    /* Indicadores de Resultados (Métricas) */
+    [data-testid="stMetricValue"] { color: #C5A880 !important; font-size: 32px !important; font-weight: bold !important; }
+    [data-testid="stMetricLabel"] { color: #FFFFFF !important; font-size: 16px !important; }
     </style>
     """, unsafe_allow_html=True)
 
-st.title("Simulador de Estructura de Negocio")
+st.title("🏡 AGENCIA NUEVA ILUSIÓN")
+st.subheader("Simulador de Estructura de Negocio")
 
-with st.form(key="simulador_negocio_v6"):
-    st.markdown('<p class="pregunta">1. Nombre del proyecto</p>', unsafe_allow_html=True)
-    proyecto = st.text_input(" ", placeholder="Ingrese el nombre...", key="f_proy")
+# 2. Formulario de Captura (Pregunta arriba, cuadro abajo)
+with st.form(key="form_cierre_ilusion"):
+    st.markdown('<p class="pregunta">1. Nombre del proyecto o ubicación</p>', unsafe_allow_html=True)
+    proyecto = st.text_input(" ", placeholder="Ej. Lotes Cartagena Este", key="val_proy")
 
     st.markdown('<p class="pregunta">2. Precio de lista del lote ($)</p>', unsafe_allow_html=True)
-    precio_lista = st.number_input("  ", min_value=0.0, step=1000000.0, format="%.0f", key="f_precio")
+    precio_lista = st.number_input("  ", min_value=0.0, step=1000000.0, format="%.0f", key="val_precio")
 
-    st.markdown('<p class="pregunta">3. ¿Aplica bono de descuento?</p>', unsafe_allow_html=True)
-    tiene_bono = st.radio("   ", ["No", "Sí"], horizontal=True, key="f_bono_check")
-    
+    st.markdown('<p class="pregunta">3. ¿Aplica algún bono de descuento?</p>', unsafe_allow_html=True)
+    check_bono = st.radio("   ", ["No", "Sí"], horizontal=True, key="val_check")
     v_bono = 0.0
-    if tiene_bono == "Sí":
+    if check_bono == "Sí":
         st.markdown('<p class="pregunta">Valor del bono ($)</p>', unsafe_allow_html=True)
-        v_bono = st.number_input("    ", min_value=0.0, step=100000.0, format="%.0f", key="f_bono_val")
+        v_bono = st.number_input("    ", min_value=0.0, step=100000.0, format="%.0f", key="val_bono")
 
     st.markdown('<p class="pregunta">4. Valor de separación ($)</p>', unsafe_allow_html=True)
-    v_separacion = st.number_input("     ", min_value=0.0, step=100000.0, format="%.0f", key="f_sep")
+    v_sep = st.number_input("     ", min_value=0.0, step=100000.0, format="%.0f", key="val_sep")
 
-    st.markdown('<p class="pregunta">5. Porcentaje de cuota inicial</p>', unsafe_allow_html=True)
-    pct_ini = st.number_input("      ", min_value=0.0, max_value=100.0, value=30.0, key="f_pct")
+    st.markdown('<p class="pregunta">5. Porcentaje de cuota inicial (%)</p>', unsafe_allow_html=True)
+    p_ini = st.number_input("      ", min_value=0.0, max_value=100.0, value=30.0, key="val_pct")
 
-    st.markdown('<p class="pregunta">6. Meses para completar la inicial</p>', unsafe_allow_html=True)
-    m_ini = st.number_input("       ", min_value=1, value=12, key="f_meses_ini")
+    st.markdown('<p class="pregunta">6. Meses para pagar la diferencia de inicial</p>', unsafe_allow_html=True)
+    m_ini = st.number_input("       ", min_value=1, value=12, key="val_mini")
 
-    st.markdown('<p class="pregunta">7. Cuotas para el saldo del lote</p>', unsafe_allow_html=True)
-    m_lote = st.number_input("        ", min_value=1, value=36, key="f_meses_lote")
+    st.markdown('<p class="pregunta">7. Meses para financiar el saldo del lote</p>', unsafe_allow_html=True)
+    m_lote = st.number_input("        ", min_value=1, value=36, key="val_mlote")
 
-    btn_calc = st.form_submit_button(label="CALCULAR")
+    btn_generar = st.form_submit_button(label="GENERAR PLAN DE NEGOCIO")
 
-if btn_calc:
+# 3. Lógica y Visualización de las 3 Cifras Clave
+if btn_generar:
     base = precio_lista - v_bono
-    v_ini_total = base * (pct_ini / 100)
-    d_ini = v_ini_total - v_separacion
-    
-    c_ini = d_ini / m_ini if d_ini > 0 else 0
-    s_lote = base - v_ini_total
-    c_lote = s_lote / m_lote
+    v_ini_total = base * (p_ini / 100)
+    diferencia_a_financiar = v_ini_total - v_sep
+    saldo_final_lote = base - v_ini_total
 
     st.divider()
-    st.header(f"Proyecto: {proyecto.upper()}")
-    
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Base Cálculo", f"${base:,.0f}")
-    c2.metric("Inicial Restante", f"${max(0, d_ini):,.0f}")
-    c3.metric("Saldo Lote", f"${s_lote:,.0f}")
+    st.markdown(f"## 📍 NEGOCIO: {proyecto.upper()}")
 
-    st.write("### Plan de Pagos Detallado")
+    # LAS 3 CIFRAS QUE NECESITAS MOSTRAR CLARAMENTE
+    c1, c2, c3 = st.columns(3)
+    c1.metric("CUOTA INICIAL TOTAL", f"${v_ini_total:,.0f}")
+    c2.metric("INICIAL A FINANCIAR", f"${max(0, diferencia_a_financiar):,.0f}")
+    c3.metric("SALDO FINAL LOTE", f"${saldo_final_lote:,.0f}")
+
+    st.write("---")
+    st.write("### 📅 Cronograma de Pagos (Letras en Blanco)")
     
-    cronograma = []
+    plan = []
     hoy = datetime.datetime.now()
     
-    if d_ini > 0:
+    # Cuotas de la inicial
+    if diferencia_a_financiar > 0:
+        c_ini_mes = diferencia_a_financiar / m_ini
         for i in range(1, int(m_ini) + 1):
-            fecha = hoy + datetime.timedelta(days=30 * i)
-            cronograma.append({
-                "Fase": "1. Cuota Inicial", 
-                "Fecha": fecha.strftime('%d/%m/%Y'), 
-                "Monto": f"${c_ini:,.0f}"
-            })
+            f = hoy + datetime.timedelta(days=30 * i)
+            plan.append({"Etapa": "1. Diferencia Inicial", "Fecha": f.strftime('%d/%m/%Y'), "Valor": f"${c_ini_mes:,.0f}"})
     
+    # Cuotas del saldo del lote
+    c_lote_mes = saldo_final_lote / m_lote
     for j in range(1, int(m_lote) + 1):
-        fecha = hoy + datetime.timedelta(days=30 * (m_ini + j))
-        cronograma.append({
-            "Fase": "2. Saldo Lote", 
-            "Fecha": fecha.strftime('%d/%m/%Y'), 
-            "Monto": f"${c_lote:,.0f}"
-        })
+        f = hoy + datetime.timedelta(days=30 * (m_ini + j))
+        plan.append({"Etapa": "2. Saldo del Lote", "Fecha": f.strftime('%d/%m/%Y'), "Valor": f"${c_lote_mes:,.0f}"})
 
-    st.table(pd.DataFrame(cronograma))
+    st.table(pd.DataFrame(plan))
+    st.caption("Estructura calculada profesionalmente para la Agencia Nueva Ilusión.")
