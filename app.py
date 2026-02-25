@@ -1,108 +1,111 @@
 import streamlit as st
 import pandas as pd
-from reportlab.lib.pagesizes import letter
-from reportlab.pdfgen import canvas
-from reportlab.lib import colors
 import datetime
-import io
 
-# Configuración visual de la Agencia
+# 1. Configuración de Marca y Estilo
 st.set_page_config(page_title="Agencia Nueva Ilusión", page_icon="🏡")
 
 st.markdown("""
     <style>
     .stApp { background-color: #0B2447; color: white; }
-    .pregunta { font-weight: bold; font-size: 18px; color: #C5A880; margin-bottom: 5px; display: block; }
-    input { border-radius: 5px !important; }
+    .pregunta { 
+        font-weight: bold; 
+        font-size: 20px; 
+        color: #C5A880; 
+        margin-top: 25px;
+        margin-bottom: 8px;
+        display: block;
+    }
+    div.stButton > button:first-child {
+        background-color: #C5A880;
+        color: #0B2447;
+        font-weight: bold;
+        width: 100%;
+        height: 3em;
+        border-radius: 10px;
+    }
     </style>
     """, unsafe_allow_html=True)
 
 st.title("🏡 AGENCIA NUEVA ILUSIÓN")
-st.subheader("Simulador Pro de Estructura de Negocio")
+st.subheader("Simulador de Estructura de Negocio Profesional")
 
-with st.form("simulador_completo"):
-    col1, col2 = st.columns(2)
+# 2. Formulario con Pregunta Arriba y Cuadro Abajo
+with st.form("simulador_v3"):
     
-    with col1:
-        st.markdown('<p class="pregunta">1. ¿En qué proyecto está el lote?</p>', unsafe_allow_html=True)
-        proyecto = st.text_input("", placeholder="Ej. Campestre Real", key="p1")
+    st.markdown('<p class="pregunta">1. ¿Cuál es el nombre del proyecto?</p>', unsafe_allow_html=True)
+    proyecto = st.text_input("", placeholder="Escribe el nombre aquí...", key="in1")
 
-        st.markdown('<p class="pregunta">2. ¿Nombre del Cliente?</p>', unsafe_allow_html=True)
-        cliente = st.text_input("", placeholder="Nombre completo", key="p2")
+    st.markdown('<p class="pregunta">2. ¿Cuál es el precio de lista del lote?</p>', unsafe_allow_html=True)
+    precio_lista = st.number_input("", min_value=0.0, step=1000000.0, format="%.0f", key="in2")
 
-        st.markdown('<p class="pregunta">3. Precio de Lista ($)</p>', unsafe_allow_html=True)
-        precio_lista = st.number_input("", min_value=0.0, step=1000000.0, key="p3")
-
-        st.markdown('<p class="pregunta">4. Bono Especial ($)</p>', unsafe_allow_html=True)
-        bono = st.number_input("", min_value=0.0, step=500000.0, key="p4")
-
-        st.markdown('<p class="pregunta">5. Valor de Separación ($)</p>', unsafe_allow_html=True)
-        separacion = st.number_input("", min_value=0.0, step=500000.0, key="p5")
-
-    with col2:
-        st.markdown('<p class="pregunta">6. % de Cuota Inicial</p>', unsafe_allow_html=True)
-        pct_ini = st.number_input("", min_value=1.0, max_value=100.0, value=30.0, key="p6")
-
-        st.markdown('<p class="pregunta">7. Meses para la Inicial</p>', unsafe_allow_html=True)
-        meses_ini = st.number_input("", min_value=1, value=12, key="p7")
-
-        st.markdown('<p class="pregunta">8. Meses para el Lote</p>', unsafe_allow_html=True)
-        meses_lote = st.number_input("", min_value=0, value=36, key="p8")
-
-        st.markdown('<p class="pregunta">9. Día de Pago Fijo</p>', unsafe_allow_html=True)
-        dia_fijo = st.slider("", 1, 30, 10, key="p9")
-
-        st.markdown('<p class="pregunta">Asesor Comercial</p>', unsafe_allow_html=True)
-        asesor = st.selectbox("", ["LUIS FERNANDO ORTEGA ARTEAGA", "YERLIS PAREDES BRONDY"])
-
-    calcular = st.form_submit_button("CALCULAR ESTRUCTURA DE NEGOCIO")
-
-if calcular:
-    # Lógica de cálculo idéntica a tu código original
-    base_calculo = precio_lista - bono
-    val_ini_total = base_calculo * (pct_ini / 100)
-    restante_inicial = val_ini_total - separation
-    saldo_lote_total = base_calculo - val_ini_total
+    st.markdown('<p class="pregunta">3. ¿Aplica bono de descuento especial hoy?</p>', unsafe_allow_html=True)
+    tiene_bono = st.radio("", ["No", "Sí"], horizontal=True, key="in3")
     
-    cuota_ini_mes = restante_inicial / meses_ini if meses_ini > 0 else 0
-    cuota_lote_mes = saldo_lote_total / meses_lote if meses_lote > 0 else 0
+    valor_bono = 0.0
+    if tiene_bono == "Sí":
+        st.markdown('<p class="pregunta">¿De cuánto es el valor del bono?</p>', unsafe_allow_html=True)
+        valor_bono = st.number_input("", min_value=0.0, step=100000.0, format="%.0f", key="in4")
 
+    st.markdown('<p class="pregunta">4. ¿Cuánto es el valor a separar?</p>', unsafe_allow_html=True)
+    valor_separacion = st.number_input("", min_value=0.0, step=100000.0, format="%.0f", key="in5")
+
+    st.markdown('<p class="pregunta">5. Porcentaje de cuota inicial (ej. 30)</p>', unsafe_allow_html=True)
+    pct_inicial = st.number_input("", min_value=0.0, max_value=100.0, value=30.0, key="in6")
+
+    st.markdown('<p class="pregunta">6. ¿En cuántos meses pagará la diferencia de la inicial?</p>', unsafe_allow_html=True)
+    meses_inicial = st.number_input("", min_value=1, value=12, key="in7")
+
+    st.markdown('<p class="pregunta">7. ¿En cuántas cuotas pagará el saldo del lote?</p>', unsafe_allow_html=True)
+    num_cuotas_lote = st.number_input("", min_value=1, value=36, key="in8")
+
+    st.markdown("<br>", unsafe_allow_html=True)
+    boton = st.form_submit_button("GENERAR ESTRUCTURA DE NEGOCIO")
+
+# 3. Lógica de Cálculos (Basada en tu estructura exacta)
+if boton:
+    precio_tras_bono = precio_lista - valor_bono
+    precio_base_calculo = precio_tras_bono
+    
+    valor_inicial_total = precio_base_calculo * (pct_inicial / 100)
+    diferencia_inicial = valor_inicial_total - valor_separacion
+    
+    cuota_inicial_mes = diferencia_inicial / meses_inicial if diferencia_inicial > 0 else 0
+    saldo_lote = precio_base_calculo - valor_inicial_total
+    cuota_lote_mes = saldo_lote / num_cuotas_lote
+
+    # 4. Presentación de Resultados
     st.divider()
-    st.write(f"### Resumen: {proyecto}")
-    st.info(f"Base: ${base_calculo:,.0f} | Saldo Inicial: ${restante_inicial:,.0f} | Saldo Lote: ${saldo_final_lote:,.0f}")
-
-    # Generación de tabla de amortización
-    datos_tabla = []
-    hoy = datetime.date.today()
+    st.header(f"📍 {proyecto.upper()}")
     
-    def ajustar_fecha(n):
-        mes_futuro = (hoy.month + n - 1) % 12 + 1
-        anio_futuro = hoy.year + (hoy.month + n - 1) // 12
-        dia = min(dia_fijo, 28) # Simplificado para estabilidad
-        return f"{dia}/{mes_futuro}/{anio_futuro}"
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Base de Cálculo", f"${precio_base_calculo:,.0f}")
+    c2.metric("Inicial Total", f"${valor_inicial_total:,.0f}")
+    c3.metric("Saldo Lote", f"${saldo_lote:,.0f}")
 
-    for i in range(1, int(meses_ini) + 1):
-        datos_tabla.append({"Cuota": f"Inicial {i}", "Fecha": ajustar_fecha(i), "Valor": f"${cuota_ini_mes:,.0f}"})
-    
-    for j in range(1, int(meses_lote) + 1):
-        datos_tabla.append({"Cuota": f"Lote {j}", "Fecha": ajustar_fecha(int(meses_ini) + j), "Valor": f"${cuota_lote_mes:,.0f}"})
+    # 5. Cronograma de Pagos
+    st.write("### 📅 Cronograma de Pagos")
+    fecha_hoy = datetime.datetime.now()
+    plan_pagos = []
 
-    st.table(pd.DataFrame(datos_tabla))
+    # FASE 1: Inicial
+    if diferencia_inicial > 0:
+        for i in range(1, meses_inicial + 1):
+            vencimiento = fecha_hoy + datetime.timedelta(days=30 * i)
+            plan_pagos.append({
+                "Fase": "1. Cuota Inicial",
+                "Vencimiento": vencimiento.strftime('%d/%m/%Y'),
+                "Valor": f"${cuota_inicial_mes:,.0f}"
+            })
 
-    # Función para el PDF
-    def crear_pdf():
-        buf = io.BytesIO()
-        c = canvas.Canvas(buf, pagesize=letter)
-        c.setFont("Helvetica-Bold", 14)
-        c.drawString(50, 750, "AGENCIA NUEVA ILUSIÓN - COTIZACIÓN")
-        c.setFont("Helvetica", 11)
-        c.drawString(50, 720, f"Proyecto: {proyecto}")
-        c.drawString(50, 705, f"Cliente: {cliente}")
-        c.drawString(50, 690, f"Precio Lista: ${precio_lista:,.0f}")
-        c.drawString(50, 675, f"Asesor: {asesor}")
-        c.showPage()
-        c.save()
-        buf.seek(0)
-        return buf
+    # FASE 2: Lote
+    for j in range(1, num_cuotas_lote + 1):
+        vencimiento = fecha_hoy + datetime.timedelta(days=30 * (meses_inicial + j))
+        plan_pagos.append({
+            "Fase": "2. Saldo Lote",
+            "Vencimiento": vencimiento.strftime('%d/%m/%Y'),
+            "Valor": f"${cuota_lote_mes:,.0f}"
+        })
 
-    st.download_button("📥 DESCARGAR COTIZACIÓN EN PDF", crear_pdf(), f"Plan_{cliente}.pdf", "application/pdf")
+    st.table(pd.DataFrame(plan_pagos))
+    st.caption("Cotización generada profesionalmente por Luis Fer.")
