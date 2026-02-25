@@ -3,7 +3,7 @@ import pandas as pd
 import datetime
 import calendar
 
-# 1. Configuración de Identidad y Estilo Visual
+# 1. Configuración de Identidad y Estilo (Contraste para iPhone/Tablet)
 st.set_page_config(page_title="AGENCIA DE VENTAS NUEVA ILUSION", page_icon="🏡")
 
 st.markdown("""
@@ -20,87 +20,92 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 st.title("AGENCIA DE VENTAS NUEVA ILUSION")
-st.subheader("Simulador de Estructura de Negocio")
+st.subheader("Simulador Pro de Estructura de Negocio")
 
-# 2. Captura de Datos con Preguntas Claras
-with st.form(key="form_final_ilusion"):
+# 2. Captura de Datos con Lógica de Descuento
+with st.form(key="form_ilusion_final"):
     st.markdown('<p class="pregunta">1. Nombre del proyecto</p>', unsafe_allow_html=True)
-    proyecto = st.text_input(" ", placeholder="Ubicación del lote", key="p_loc")
+    proyecto = st.text_input(" ", placeholder="Ubicación del lote", key="p_proy")
 
     st.markdown('<p class="pregunta">2. Nombre del Cliente</p>', unsafe_allow_html=True)
-    cliente = st.text_input("  ", placeholder="Nombre del comprador", key="p_cli")
+    cliente = st.text_input("  ", placeholder="Nombre del comprador", key="p_cliente")
 
     st.markdown('<p class="pregunta">3. Precio de lista del lote ($)</p>', unsafe_allow_html=True)
     precio_lista = st.number_input("   ", min_value=0.0, step=1000000.0, format="%.0f")
 
-    st.markdown('<p class="pregunta">4. Valor del Bono de Descuento ($)</p>', unsafe_allow_html=True)
-    v_bono = st.number_input("    ", min_value=0.0, step=100000.0, format="%.0f")
+    # Lógica de Descuento solicitada
+    st.markdown('<p class="pregunta">4. ¿Aplica bono de descuento especial?</p>', unsafe_allow_html=True)
+    aplica_descuento = st.radio("    ", ["No", "Sí"], horizontal=True, key="p_radio")
+    
+    valor_descuento = 0.0
+    if aplica_descuento == "Sí":
+        st.markdown('<p class="pregunta">Indique el valor del descuento ($)</p>', unsafe_allow_html=True)
+        valor_descuento = st.number_input("     ", min_value=0.0, step=100000.0, format="%.0f")
 
     st.markdown('<p class="pregunta">5. Valor de Separación (Abono hoy) ($)</p>', unsafe_allow_html=True)
-    v_sep = st.number_input("     ", min_value=0.0, step=100000.0, format="%.0f")
+    v_separacion = st.number_input("      ", min_value=0.0, step=100000.0, format="%.0f")
 
     st.markdown('<p class="pregunta">6. Porcentaje de Cuota Inicial (%)</p>', unsafe_allow_html=True)
-    p_ini = st.number_input("      ", min_value=0.0, max_value=100.0, value=30.0)
+    p_inicial = st.number_input("       ", min_value=0.0, max_value=100.0, value=30.0)
 
-    st.markdown('<p class="pregunta">7. Meses para pagar el resto de la inicial</p>', unsafe_allow_html=True)
-    m_ini = st.number_input("       ", min_value=1, value=12)
+    # Renombramiento de campos solicitado
+    st.markdown('<p class="pregunta">7. Meses por financiar cuota inicial</p>', unsafe_allow_html=True)
+    m_ini_fin = st.number_input("        ", min_value=1, value=12)
 
-    st.markdown('<p class="pregunta">8. Meses para financiar el valor del lote</p>', unsafe_allow_html=True)
-    m_lote = st.number_input("        ", min_value=1, value=36)
+    st.markdown('<p class="pregunta">8. Meses a financiar saldo del lote</p>', unsafe_allow_html=True)
+    m_lote_fin = st.number_input("         ", min_value=1, value=36)
 
-    btn_calc = st.form_submit_button(label="CALCULAR PLAN DE PAGOS")
+    btn_calc = st.form_submit_button(label="GENERAR ESTRUCTURA DE NEGOCIO")
 
-# 3. Lógica de Negocio y Resultados
+# 3. Lógica de Negocio y Presentación
 if btn_calc:
-    base = precio_lista - v_bono
-    v_ini_total = base * (p_ini / 100)
-    # Valor a financiar después del abono (separación)
-    dif_inicial_financiar = v_ini_total - v_sep
-    saldo_lote = base - v_ini_total
+    precio_base = precio_lista - valor_descuento
+    v_inicial_total = precio_base * (p_inicial / 100)
+    saldo_cuota_inicial = v_inicial_total - v_separacion
+    valor_financiado_lote = precio_base - v_inicial_total
 
     st.divider()
     st.markdown(f"## 📍 PROYECTO: {proyecto.upper()}")
     st.markdown(f"**Cliente:** {cliente.upper()}")
 
-    # Visualización de valores solicitados
+    # Métricas con los nombres solicitados
     c1, c2, c3 = st.columns(3)
-    c1.metric("CUOTA INICIAL TOTAL", f"${v_ini_total:,.0f}")
-    c2.metric("INICIAL POR PAGAR", f"${max(0, dif_inicial_financiar):,.0f}")
-    c3.metric("VALOR FINANCIADO LOTE", f"${saldo_lote:,.0f}")
+    c1.metric("VALOR CUOTA INICIAL", f"${v_inicial_total:,.0f}")
+    c2.metric("SALDO CUOTA INICIAL", f"${max(0, saldo_cuota_inicial):,.0f}")
+    c3.metric("VALOR FINANCIADO LOTE", f"${valor_financiado_lote:,.0f}")
 
     st.write("---")
-    st.write("### 📅 Cronograma con Fechas de Pago Fijas")
+    st.write("### 📅 Cronograma de Pagos Detallado")
     
     plan = []
-    fecha_hoy = datetime.datetime.now()
-    dia_pago = fecha_hoy.day # El día de hoy define el día de todos los pagos futuros
+    fecha_hoy = datetime.date.today()
+    dia_fijo = fecha_hoy.day # Se fija el día del pago igual al día de la separación
 
-    def calcular_fecha(meses_adelante):
-        mes = (fecha_hoy.month + meses_adelante - 1) % 12 + 1
-        anio = fecha_hoy.year + (fecha_hoy.month + meses_adelante - 1) // 12
-        # Ajustar si el día no existe en el mes futuro (ej: 31 de febrero)
-        ultimo_dia_mes = calendar.monthrange(anio, mes)[1]
-        dia_ajustado = min(dia_pago, ultimo_dia_mes)
-        return datetime.date(anio, mes, dia_ajustado).strftime('%d/%m/%Y')
+    def calcular_fecha_pago(meses_futuros):
+        mes = (fecha_hoy.month + meses_futuros - 1) % 12 + 1
+        anio = fecha_hoy.year + (fecha_hoy.month + meses_futuros - 1) // 12
+        ultimo_dia = calendar.monthrange(anio, mes)[1]
+        dia_final = min(dia_fijo, ultimo_dia)
+        return datetime.date(anio, mes, dia_final).strftime('%d/%m/%Y')
 
-    # FASE 1: Diferencia de la Inicial
-    if dif_inicial_financiar > 0:
-        cuota_ini = dif_inicial_financiar / m_ini
-        for i in range(1, int(m_ini) + 1):
+    # FASE 1: Cuotas de Pago Inicial
+    if saldo_cuota_inicial > 0:
+        c_ini_valor = saldo_cuota_inicial / m_ini_fin
+        for i in range(1, int(m_ini_fin) + 1):
             plan.append({
-                "Etapa": "1. Diferencia Inicial", 
-                "Fecha": calcular_fecha(i), 
-                "Valor Cuota": f"${cuota_ini:,.0f}"
+                "Etapa": f"Cuota {i} de pago inicial", 
+                "Fecha": calcular_fecha_pago(i), 
+                "Valor": f"${c_ini_valor:,.0f}"
             })
 
-    # FASE 2: Saldo del Lote
-    cuota_lote = saldo_lote / m_lote
-    for j in range(1, int(m_lote) + 1):
+    # FASE 2: Cuotas del Lote
+    c_lote_valor = valor_financiado_lote / m_lote_fin
+    for j in range(1, int(m_lote_fin) + 1):
         plan.append({
-            "Etapa": "2. Valor Lote", 
-            "Fecha": calcular_fecha(int(m_ini) + j), 
-            "Valor Cuota": f"${cuota_lote:,.0f}"
+            "Etapa": f"Cuota {j} del lote", 
+            "Fecha": calcular_fecha_pago(int(m_ini_fin) + j), 
+            "Valor": f"${c_lote_valor:,.0f}"
         })
 
     st.table(pd.DataFrame(plan))
-    st.success(f"Día de pago establecido: todos los {dia_pago} de cada mes.")
+    st.success(f"Día de pago establecido: los días {dia_fijo} de cada mes.")
