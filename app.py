@@ -1,83 +1,60 @@
 import streamlit as st
 import pandas as pd
-from reportlab.lib.pagesizes import letter
-from reportlab.pdfgen import canvas
-import datetime
-import io
 
+# Configuración profesional de la Agencia Nueva Ilusión
 st.set_page_config(page_title="Agencia Nueva Ilusión", page_icon="🏡")
 
-# Diseño de marca
-COLOR_FONDO = "#0B2447"
-COLOR_ACENTO = "#C5A880"
-
-st.markdown(f"""
+# Estilo de marca: Fondo azul oscuro y letras doradas para las preguntas
+st.markdown("""
     <style>
-    .stApp {{ background-color: {COLOR_FONDO}; color: white; }}
-    .stButton>button {{ background-color: {COLOR_ACENTO}; color: black; border-radius: 10px; font-weight: bold; }}
+    .stApp { background-color: #0B2447; color: white; }
+    .titulo-pregunta { 
+        font-weight: bold; 
+        font-size: 20px; 
+        color: #C5A880; 
+        margin-top: 20px;
+        margin-bottom: 5px;
+        display: block;
+    }
     </style>
     """, unsafe_allow_html=True)
 
 st.title("🏡 AGENCIA NUEVA ILUSIÓN")
-st.subheader("Simulador Pro de Estructura de Negocio")
+st.write("### Cotizador Multizona Profesional")
 
-with st.form("simulador_guiado"):
-    col1, col2 = st.columns(2)
-    with col1:
-        # Guía para el Proyecto
-        proyecto = st.text_input("Proyecto / Ubicación", 
-                                placeholder="Ej: Turbaco - Sector Campestre",
-                                help="Escribe aquí si el lote está en Turbaco, Santa Rosa o Cartagena.")
-        
-        # Guía para el Cliente
-        cliente = st.text_input("Nombre del Cliente", 
-                               placeholder="Nombre completo del comprador",
-                               help="Para que la cotización salga personalizada con su nombre.")
-        
-        # Guía para el Precio
-        precio_lista = st.number_input("Precio Lista ($)", min_value=0, step=1000000,
-                                     help="Coloca el valor total del terreno según la lista de precios.")
-        
-        bono = st.number_input("Bono Especial ($)", min_value=0, step=500000,
-                             help="Si hay un descuento o bono promocional, colócalo aquí.")
+with st.form("cotizador_universal"):
     
-    with col2:
-        separacion = st.number_input("Valor Separación ($)", min_value=0, step=500000,
-                                   help="Monto que el cliente entrega para apartar el lote.")
-        
-        pct_ini = st.number_input("% Cuota Inicial", min_value=1, max_value=100, value=30,
-                                 help="Porcentaje del valor total que se pagará como inicial.")
-        
-        # Guía para los Meses
-        meses_ini = st.number_input("Meses Inicial", min_value=1, value=12,
-                                   help="Plazo en meses para completar el pago de la cuota inicial.")
-        
-        meses_lote = st.number_input("Meses Financiación Lote", min_value=0, value=36,
-                                    help="Plazo para pagar el saldo restante del lote.")
-    
-    dia_fijo = st.slider("Día de Pago Fijo", 1, 30, 10,
-                        help="Día del mes en que el cliente prefiere realizar sus pagos.")
-    
-    boton = st.form_submit_button("CALCULAR Y GENERAR GUÍA DE PAGOS")
+    # 1. UBICACIÓN (Pregunta arriba, cuadro abajo)
+    st.markdown('<label class="titulo-pregunta">1. ¿En qué ciudad o proyecto está el lote?</label>', unsafe_allow_html=True)
+    proyecto = st.text_input("", placeholder="Escribe la ubicación aquí...", key="loc")
 
-if boton:
-    base_calculo = precio_lista - bono
-    val_ini_total = base_calculo * (pct_ini / 100)
-    restante_inicial = val_ini_total - separacion
-    saldo_final_lote = base_calculo - val_ini_total
-    
-    st.divider()
-    st.info(f"📍 Negocio para {cliente} en {proyecto}")
-    
-    # Tabla de pagos automática
-    datos_tabla = []
-    hoy = datetime.date.today()
-    cuota_ini = restante_inicial / meses_ini
-    cuota_lote = saldo_final_lote / meses_lote if meses_lote > 0 else 0
+    # 2. CLIENTE
+    st.markdown('<label class="titulo-pregunta">2. ¿Cuál es el nombre del cliente?</label>', unsafe_allow_html=True)
+    cliente = st.text_input("", placeholder="Nombre completo del interesado", key="nom")
 
-    for i in range(1, meses_ini + 1):
-        datos_tabla.append({"Cuota": f"Inicial {i}", "Monto": f"${cuota_ini:,.0f}"})
-    for j in range(1, meses_lote + 1):
-        datos_tabla.append({"Cuota": f"Lote {j}", "Monto": f"${cuota_lote:,.0f}"})
+    # 3. PRECIO
+    st.markdown('<label class="titulo-pregunta">3. ¿Cuál es el precio total de venta?</label>', unsafe_allow_html=True)
+    precio = st.number_input("", min_value=0, step=500000, key="pre")
 
-    st.table(pd.DataFrame(datos_tabla))
+    # 4. PLAZO
+    st.markdown('<label class="titulo-pregunta">4. ¿En cuántos meses se va a financiar?</label>', unsafe_allow_html=True)
+    meses = st.number_input("", min_value=1, max_value=120, value=36, key="mes")
+
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    # Botón de cálculo
+    boton_calcular = st.form_submit_button("CALCULAR PLAN DE PAGOS")
+
+if boton_calcular:
+    if precio > 0:
+        cuota_mensual = precio / meses
+        st.divider()
+        st.success(f"✅ Plan generado para el proyecto en: {proyecto}")
+        
+        col1, col2 = st.columns(2)
+        col1.metric("Cliente", cliente)
+        col2.metric("Cuota Mensual", f"${cuota_mensual:,.0f}")
+        
+        st.info("Este cálculo es una base comercial para iniciar el cierre de venta.")
+    else:
+        st.error("Por favor, ingresa un precio de venta válido.")
