@@ -31,7 +31,7 @@ st.markdown("""
 
 st.title("AGENCIA DE VENTAS NUEVA ILUSION")
 
-# 2. Captura de Datos Dinámica (Reacciona en vivo)
+# 2. Captura de Datos Dinámica
 st.markdown('<p class="pregunta">1. Nombre del proyecto</p>', unsafe_allow_html=True)
 proyecto = st.text_input(" ", placeholder="Ubicación del lote", key="k_p")
 
@@ -69,7 +69,6 @@ f_negociacion = st.date_input("          ", value=datetime.date.today(), key="k_
 st.markdown("<br>", unsafe_allow_html=True)
 btn_ejecutar = st.button("GENERAR ESTRUCTURA DE NEGOCIO")
 
-# Usamos Session State para que el resultado no se borre
 if btn_ejecutar:
     st.session_state['mostrar_resultados'] = True
 
@@ -86,7 +85,6 @@ if st.session_state.get('mostrar_resultados', False):
     st.divider()
     st.markdown(f"## 📍 PROYECTO: {proyecto.upper()}")
     
-    # Métricas con los nombres de tu agencia
     col_m1, col_m2 = st.columns(2)
     with col_m1:
         st.metric("VALOR CUOTA INICIAL", f"${v_cuota_inicial_total:,.0f}")
@@ -115,6 +113,5 @@ if st.session_state.get('mostrar_resultados', False):
         for j in range(1, int(m_lote) + 1):
             plan_pagos.append({"Etapa": f"Cuota {j} del lote", "Fecha": calcular_fecha(int(m_ini) + j), "Valor": f"${c_mensual_lote:,.0f}"})
 
-    # Tabla en blanco sin índices
     st.table(pd.DataFrame(plan_pagos))
     st.caption("Estructura calculada por Luis Fer para la AGENCIA DE VENTAS NUEVA ILUSION.")
