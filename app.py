@@ -5,6 +5,7 @@ import calendar
 import os
 from fpdf import FPDF
 
+# 1. Configuración de Marca
 st.set_page_config(page_title="AGENCIA DE VENTAS NUEVA ILUSION", page_icon="🏡", layout="centered")
 
 st.markdown("""
@@ -34,6 +35,7 @@ def limpiar_formulario():
 st.title("AGENCIA DE VENTAS NUEVA ILUSION")
 st.button("🔄 NUEVO CÁLCULO (Borrar todo)", on_click=limpiar_formulario)
 
+# 2. Captura de Datos
 st.markdown('<p class="pregunta">1. Nombre del proyecto</p>', unsafe_allow_html=True)
 proyecto = st.text_input(" ", placeholder="Ubicación del lote", key="k_p")
 
@@ -54,6 +56,7 @@ if aplica_bono == "Si":
 st.markdown('<p class="pregunta">5. Valor de Separación (Abono hoy) ($)</p>', unsafe_allow_html=True)
 v_sep = st.number_input("      ", min_value=0.0, step=100000.0, format="%.0f", key="k_s")
 
+# Campos que inician en blanco (Value = None)
 st.markdown('<p class="pregunta">6. Porcentaje de Cuota Inicial (%)</p>', unsafe_allow_html=True)
 p_ini = st.number_input("       ", min_value=0.0, max_value=100.0, value=None, placeholder="Ej: 30", key="k_pct")
 
@@ -69,9 +72,10 @@ f_negociacion = st.date_input("          ", value=datetime.date.today(), key="k_
 st.markdown("<br>", unsafe_allow_html=True)
 btn_ejecutar = st.button("GENERAR ESTRUCTURA DE NEGOCIO")
 
+# 3. Validación y Resultados
 if btn_ejecutar:
     if p_ini is None or m_ini is None or m_lote is None:
-        st.error("Digita el porcentaje y los meses faltantes antes de calcular.")
+        st.error("⚠️ Por favor digita el porcentaje y los meses faltantes antes de calcular.")
     else:
         st.session_state['mostrar_resultados'] = True
 
@@ -111,4 +115,55 @@ if st.session_state.get('mostrar_resultados', False) and p_ini is not None and m
         for i in range(1, int(m_ini) + 1):
             plan_pagos.append({"Etapa": f"Cuota {i} de pago inicial", "Fecha": calcular_fecha(i), "Valor": f"${c_mensual_ini:,.0f}"})
     
-    if m_lote > 0 and valor_financiado_
+    # LA LÍNEA 114 QUE SE HABÍA CORTADO AHORA ESTÁ COMPLETA AQUÍ:
+    if m_lote > 0 and valor_financiado_lote > 0:
+        for j in range(1, int(m_lote) + 1):
+            plan_pagos.append({"Etapa": f"Cuota {j} del lote", "Fecha": calcular_fecha(int(m_ini) + j), "Valor": f"${c_mensual_lote:,.0f}"})
+
+    st.table(pd.DataFrame(plan_pagos))
+
+    # 4. Creación de Carpeta y PDF
+    fecha_hoy = datetime.date.today().strftime("%Y-%m-%d")
+    nombre_carpeta = f"Reportes_{fecha_hoy}"
+    os.makedirs(nombre_carpeta, exist_ok=True)
+    
+    nombre_archivo = f"Plan_Pago_{cliente.replace(' ', '_')}.pdf"
+    ruta_completa = os.path.join(nombre_carpeta, nombre_archivo)
+
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", 'B', 16)
+    pdf.cell(190, 10, "AGENCIA DE VENTAS NUEVA ILUSION", 0, 1, 'C')
+    pdf.set_font("Arial", '', 12)
+    pdf.cell(190, 10, f"Fecha de Negociacion: {f_negociacion.strftime('%d/%m/%Y')}", 0, 1, 'R')
+    pdf.cell(190, 10, f"Proyecto: {proyecto.upper()}", 0, 1, 'L')
+    pdf.cell(190, 10, f"Cliente: {cliente.upper()}", 0, 1, 'L')
+    pdf.ln(5)
+    
+    pdf.set_font("Arial", 'B', 12)
+    pdf.cell(95, 10, f"Valor Cuota Inicial: ${v_cuota_inicial_total:,.0f}", 0, 0)
+    pdf.cell(95, 10, f"Saldo Cuota Inicial: ${max(0, saldo_cuota_inicial):,.0f}", 0, 1)
+    pdf.cell(95, 10, f"Cuota Mensual Inicial: ${c_mensual_ini:,.0f}", 0, 0)
+    pdf.cell(95, 10, f"Valor Financiado Lote: ${valor_financiado_lote:,.0f}", 0, 1)
+    pdf.ln(5)
+    
+    pdf.set_font("Arial", 'B', 10)
+    pdf.cell(80, 10, "Etapa de Pago", 1, 0, 'C')
+    pdf.cell(50, 10, "Fecha", 1, 0, 'C')
+    pdf.cell(60, 10, "Valor", 1, 1, 'C')
+    
+    pdf.set_font("Arial", '', 10)
+    for cuota in plan_pagos:
+        pdf.cell(80, 10, cuota["Etapa"], 1, 0, 'L')
+        pdf.cell(50, 10, cuota["Fecha"], 1, 0, 'C')
+        pdf.cell(60, 10, cuota["Valor"], 1, 1, 'R')
+
+    pdf.output(ruta_completa)
+
+    with open(ruta_completa, "rb") as archivo_pdf:
+        st.download_button(
+            label="📄 DESCARGAR PDF PARA WHATSAPP",
+            data=archivo_pdf,
+            file_name=nombre_archivo,
+            mime="application/pdf"
+        )
