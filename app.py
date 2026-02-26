@@ -1,123 +1,120 @@
-import tkinter as tk
-from tkinter import messagebox, ttk
+import streamlit as st
+import pandas as pd
 import datetime
 import calendar
 
-# 1. Configuración de Colores de la Agencia
-COLOR_FONDO = "#0B2447"
-COLOR_DORADO = "#C5A880"
-COLOR_BLANCO = "#FFFFFF"
+# 1. Configuración de Marca y Diseño Centrado
+st.set_page_config(page_title="AGENCIA DE VENTAS NUEVA ILUSION", page_icon="🏡", layout="centered")
 
-def limpiar_num(texto):
-    if not texto: return 0.0
-    return float(texto.replace("$", "").replace(".", "").replace(",", "").strip())
+st.markdown("""
+    <style>
+    .stApp { background-color: #0B2447; color: white; }
+    .pregunta { font-weight: bold; font-size: 19px; color: #C5A880; margin-top: 15px; margin-bottom: 5px; display: block; }
+    .pregunta-blanca { font-weight: bold; font-size: 19px; color: #FFFFFF; margin-top: 15px; margin-bottom: 5px; display: block; }
+    
+    /* Forzar botones de radio (Si/No) en blanco */
+    div[data-testid="stRadio"] label { color: white !important; font-weight: bold !important; }
+    
+    /* Estilo de la Tabla: Letras blancas claras y sin números laterales */
+    .stTable { color: white !important; width: 100% !important; background-color: transparent !important; }
+    .stTable td { color: white !important; font-size: 16px !important; border-bottom: 1px solid #19376D !important; }
+    .stTable th { color: #C5A880 !important; background-color: #19376D !important; font-size: 17px !important; }
 
-# Función para habilitar el cuadro de Bono solo si marcas "Si"
-def toggle_bono():
-    if var_bono.get() == "Si":
-        ent_val_bono.config(state="normal")
-        ent_val_bono.focus()
-    else:
-        ent_val_bono.delete(0, tk.END)
-        ent_val_bono.insert(0, "0")
-        ent_val_bono.config(state="disabled")
+    /* Métricas Doradas */
+    [data-testid="stMetricValue"] { color: #C5A880 !important; font-size: 30px !important; font-weight: bold !important; }
+    [data-testid="stMetricLabel"] { color: #FFFFFF !important; font-size: 15px !important; }
+    
+    /* Estilo del botón principal */
+    div.stButton > button:first-child { background-color: #C5A880; color: #0B2447; font-weight: bold; width: 100%; border-radius: 8px; }
+    </style>
+    """, unsafe_allow_html=True)
 
-def generar_negocio_pc():
-    try:
-        # Captura de datos
-        precio = limpiar_num(ent_precio.get())
-        v_bono = limpiar_num(ent_val_bono.get()) if var_bono.get() == "Si" else 0
-        v_sep = limpiar_num(ent_sep.get())
-        p_ini = limpiar_num(ent_pct.get())
-        m_ini = int(limpiar_num(ent_m_ini.get()))
-        m_lote = int(limpiar_num(ent_m_lote.get()))
-        
-        f_texto = ent_fecha.get() # DD/MM/AAAA
-        d, m, a = map(int, f_texto.split('/'))
-        f_neg = datetime.date(a, m, d)
+st.title("AGENCIA DE VENTAS NUEVA ILUSION")
 
-        # Cálculos de la Agencia Nueva Ilusión
-        base_calc = precio - v_bono
-        v_inicial_total = base_calc * (p_ini / 100)
-        saldo_inicial = v_inicial_total - v_sep
-        v_fin_lote = base_calc - v_inicial_total
-        
-        c_ini_mes = saldo_inicial / m_ini if m_ini > 0 else 0
-        c_lote_mes = v_fin_lote / m_lote if m_lote > 0 else 0
+# 2. Captura de Datos Dinámica (Reacciona en vivo)
+st.markdown('<p class="pregunta">1. Nombre del proyecto</p>', unsafe_allow_html=True)
+proyecto = st.text_input(" ", placeholder="Ubicación del lote", key="k_p")
 
-        # Mostrar métricas doradas
-        lbl_v_ini.config(text=f"VALOR CUOTA INICIAL: ${v_inicial_total:,.0f}")
-        lbl_s_ini.config(text=f"SALDO CUOTA INICIAL: ${max(0, saldo_inicial):,.0f}")
-        lbl_c_ini.config(text=f"CUOTA MENSUAL INICIAL: ${c_ini_mes:,.0f}")
-        lbl_v_lote.config(text=f"VALOR FINANCIADO LOTE: ${v_fin_lote:,.0f}")
+st.markdown('<p class="pregunta">2. Nombre del Cliente</p>', unsafe_allow_html=True)
+cliente = st.text_input("  ", placeholder="Nombre del comprador", key="k_c")
 
-        # Llenar cronograma sin índices laterales
-        for row in tabla.get_children(): tabla.delete(row)
-        
-        for i in range(1, m_ini + 1):
-            f_p = (f_neg + datetime.timedelta(days=30*i)).strftime("%d/%m/%Y")
-            tabla.insert("", "end", values=(f"Cuota {i} de pago inicial", f_p, f"${c_ini_mes:,.0f}"))
-            
-        for j in range(1, m_lote + 1):
-            f_p = (f_neg + datetime.timedelta(days=30*(m_ini+j))).strftime("%d/%m/%Y")
-            tabla.insert("", "end", values=(f"Cuota {j} del lote", f_p, f"${c_lote_mes:,.0f}"))
+st.markdown('<p class="pregunta">3. Precio de lista del lote ($)</p>', unsafe_allow_html=True)
+precio_lista = st.number_input("   ", min_value=0.0, step=1000000.0, format="%.0f", key="k_pr")
 
-    except Exception:
-        messagebox.showerror("Revisa los números", "Asegúrate de:\n1. No dejar campos vacíos.\n2. Fecha como DD/MM/AAAA.\n3. Usar solo números.")
+# LÓGICA DE BONO DINÁMICA
+st.markdown('<p class="pregunta-blanca">4. ¿Aplica bono de descuento especial?</p>', unsafe_allow_html=True)
+aplica_bono = st.radio("    ", ["No", "Si"], horizontal=True, key="k_radio_b")
 
-# --- INTERFAZ PC ---
-root = tk.Tk()
-root.title("AGENCIA DE VENTAS NUEVA ILUSION")
-root.geometry("600x850")
-root.configure(bg=COLOR_FONDO)
+valor_bono = 0.0
+# El cuadro SOLO aparece si marcas "Si"
+if aplica_bono == "Si":
+    st.markdown('<p class="pregunta-blanca">Digite el valor del descuento ($)</p>', unsafe_allow_html=True)
+    valor_bono = st.number_input("     ", min_value=0.0, step=100000.0, format="%.0f", key="k_val_b")
 
-def q(t, c=COLOR_DORADO):
-    return tk.Label(root, text=t, bg=COLOR_FONDO, fg=c, font=("Arial", 10, "bold"))
+st.markdown('<p class="pregunta">5. Valor de Separación (Abono hoy) ($)</p>', unsafe_allow_html=True)
+v_sep = st.number_input("      ", min_value=0.0, step=100000.0, format="%.0f", key="k_s")
 
-q("1. Nombre del proyecto:").pack(pady=2)
-ent_proy = tk.Entry(root, justify='center'); ent_proy.pack()
+st.markdown('<p class="pregunta">6. Porcentaje de Cuota Inicial (%)</p>', unsafe_allow_html=True)
+p_ini = st.number_input("       ", min_value=0.0, max_value=100.0, value=30.0, key="k_pct")
 
-q("2. Nombre del Cliente:").pack(pady=2)
-ent_cli = tk.Entry(root, justify='center'); ent_cli.pack()
+st.markdown('<p class="pregunta">7. Meses por financiar cuota inicial</p>', unsafe_allow_html=True)
+m_ini = st.number_input("        ", min_value=1, value=12, key="k_mi")
 
-q("3. Precio de lista del lote ($):").pack(pady=2)
-ent_precio = tk.Entry(root, justify='center'); ent_precio.pack()
+st.markdown('<p class="pregunta">8. Meses a financiar saldo del lote</p>', unsafe_allow_html=True)
+m_lote = st.number_input("         ", min_value=1, value=36, key="k_ml")
 
-q("4. ¿Aplica bono de descuento especial?", COLOR_BLANCO).pack(pady=2)
-var_bono = tk.StringVar(value="No")
-tk.Radiobutton(root, text="No", variable=var_bono, value="No", command=toggle_bono, bg=COLOR_FONDO, fg="white", selectcolor="#19376D").pack()
-tk.Radiobutton(root, text="Si", variable=var_bono, value="Si", command=toggle_bono, bg=COLOR_FONDO, fg="white", selectcolor="#19376D").pack()
+st.markdown('<p class="pregunta">9. Fecha de negociacion</p>', unsafe_allow_html=True)
+f_negociacion = st.date_input("          ", value=datetime.date.today(), key="k_fn")
 
-q("Digite el valor del bono ($):", COLOR_BLANCO).pack()
-ent_val_bono = tk.Entry(root, justify='center', state="disabled"); ent_val_bono.insert(0, "0"); ent_val_bono.pack()
+st.markdown("<br>", unsafe_allow_html=True)
+btn_ejecutar = st.button("GENERAR ESTRUCTURA DE NEGOCIO")
 
-q("5. Valor de Separación (Abono hoy) ($):").pack(pady=2)
-ent_sep = tk.Entry(root, justify='center'); ent_sep.pack()
+# Usamos Session State para que el resultado no se borre
+if btn_ejecutar:
+    st.session_state['mostrar_resultados'] = True
 
-q("6. Porcentaje de Cuota Inicial (%):").pack(pady=2)
-ent_pct = tk.Entry(root, justify='center'); ent_pct.insert(0, "30"); ent_pct.pack()
+# 3. Presentación de Resultados y Cronograma
+if st.session_state.get('mostrar_resultados', False):
+    base = precio_lista - valor_bono
+    v_cuota_inicial_total = base * (p_ini / 100)
+    saldo_cuota_inicial = v_cuota_inicial_total - v_sep
+    valor_financiado_lote = base - v_cuota_inicial_total
+    
+    c_mensual_ini = saldo_cuota_inicial / m_ini if m_ini > 0 else 0
+    c_mensual_lote = valor_financiado_lote / m_lote if m_lote > 0 else 0
 
-q("7. Meses por financiar cuota inicial:").pack(pady=2)
-ent_m_ini = tk.Entry(root, justify='center'); ent_m_ini.pack()
+    st.divider()
+    st.markdown(f"## 📍 PROYECTO: {proyecto.upper()}")
+    
+    # Métricas con los nombres de tu agencia
+    col_m1, col_m2 = st.columns(2)
+    with col_m1:
+        st.metric("VALOR CUOTA INICIAL", f"${v_cuota_inicial_total:,.0f}")
+        st.metric("SALDO CUOTA INICIAL", f"${max(0, saldo_cuota_inicial):,.0f}")
+    with col_m2:
+        st.metric("CUOTA MENSUAL INICIAL", f"${c_mensual_ini:,.0f}")
+        st.metric("VALOR FINANCIADO LOTE", f"${valor_financiado_lote:,.0f}")
 
-q("8. Meses a financiar saldo del lote:").pack(pady=2)
-ent_m_lote = tk.Entry(root, justify='center'); ent_m_lote.pack()
+    st.write("---")
+    st.write("### 📅 Cronograma de Pago Detallado")
+    
+    plan_pagos = []
+    dia_fijo = f_negociacion.day
 
-q("9. Fecha de negociacion (DD/MM/AAAA):").pack(pady=2)
-ent_fecha = tk.Entry(root, justify='center'); ent_fecha.insert(0, datetime.date.today().strftime("%d/%m/%Y")); ent_fecha.pack()
+    def calcular_fecha(meses_adelante):
+        m_p = (f_negociacion.month + meses_adelante - 1) % 12 + 1
+        a_p = f_negociacion.year + (f_negociacion.month + meses_adelante - 1) // 12
+        max_d = calendar.monthrange(a_p, m_p)[1]
+        return datetime.date(a_p, m_p, min(dia_fijo, max_d)).strftime('%d/%m/%Y')
 
-tk.Button(root, text="GENERAR ESTRUCTURA DE NEGOCIO", command=generar_negocio_pc, bg=COLOR_DORADO, font=("Arial", 10, "bold")).pack(pady=15)
+    if saldo_cuota_inicial > 0:
+        for i in range(1, int(m_ini) + 1):
+            plan_pagos.append({"Etapa": f"Cuota {i} de pago inicial", "Fecha": calcular_fecha(i), "Valor": f"${c_mensual_ini:,.0f}"})
+    
+    if m_lote > 0:
+        for j in range(1, int(m_lote) + 1):
+            plan_pagos.append({"Etapa": f"Cuota {j} del lote", "Fecha": calcular_fecha(int(m_ini) + j), "Valor": f"${c_mensual_lote:,.0f}"})
 
-# Cifras de Cierre
-lbl_v_ini = tk.Label(root, text="", bg=COLOR_FONDO, fg=COLOR_DORADO, font=("Arial", 11, "bold"))
-lbl_v_ini.pack(); lbl_s_ini = tk.Label(root, text="", bg=COLOR_FONDO, fg=COLOR_DORADO, font=("Arial", 11, "bold"))
-lbl_s_ini.pack(); lbl_c_ini = tk.Label(root, text="", bg=COLOR_FONDO, fg=COLOR_DORADO, font=("Arial", 11, "bold"))
-lbl_c_ini.pack(); lbl_v_lote = tk.Label(root, text="", bg=COLOR_FONDO, fg=COLOR_DORADO, font=("Arial", 11, "bold"))
-lbl_v_lote.pack()
-
-# Cronograma
-tabla = ttk.Treeview(root, columns=("E", "F", "V"), show="headings", height=8)
-tabla.heading("E", text="ETAPA DE PAGO"); tabla.heading("F", text="FECHA"); tabla.heading("V", text="VALOR")
-tabla.pack(pady=10, fill="x", padx=20)
-
-root.mainloop()
+    # Tabla en blanco sin índices
+    st.table(pd.DataFrame(plan_pagos))
+    st.caption("Estructura calculada por Luis Fer para la AGENCIA DE VENTAS NUEVA ILUSION.")
