@@ -1,114 +1,122 @@
-import streamlit as st
-import pandas as pd
+import tkinter as tk
+from tkinter import messagebox, ttk
 import datetime
 import calendar
 
-# 1. Configuración de Marca y Diseño Centrado (Compacto)
-st.set_page_config(page_title="AGENCIA DE VENTAS NUEVA ILUSION", page_icon="🏡", layout="centered")
+# 1. Configuración Visual de la Agencia
+COLOR_FONDO = "#0B2447"
+COLOR_DORADO = "#C5A880"
+COLOR_BLANCO = "#FFFFFF"
 
-st.markdown("""
-    <style>
-    .stApp { background-color: #0B2447; color: white; }
-    .pregunta { font-weight: bold; font-size: 19px; color: #C5A880; margin-top: 15px; margin-bottom: 5px; display: block; }
-    
-    /* Forzar botones de radio (Si/No) en color blanco */
-    div[data-testid="stRadio"] label { color: white !important; font-weight: bold !important; }
-    
-    /* Estilo de la Tabla: Letras blancas claras y sin números laterales */
-    .stTable { color: white !important; width: 100% !important; background-color: transparent !important; }
-    .stTable td { color: white !important; font-size: 16px !important; border-bottom: 1px solid #19376D !important; }
-    .stTable th { color: #C5A880 !important; background-color: #19376D !important; font-size: 17px !important; }
+def limpiar_dato(texto):
+    if not texto: return 0.0
+    return float(texto.replace("$", "").replace(".", "").replace(",", "").strip())
 
-    /* Métricas Doradas */
-    [data-testid="stMetricValue"] { color: #C5A880 !important; font-size: 32px !important; font-weight: bold !important; }
-    [data-testid="stMetricLabel"] { color: #FFFFFF !important; font-size: 15px !important; }
-    </style>
-    """, unsafe_allow_html=True)
+def calcular():
+    try:
+        # Captura de datos con nombres de Luis Fer
+        precio = limpiar_dato(ent_precio.get())
+        bono = limpiar_dato(ent_bono.get()) if var_bono.get() == "Si" else 0
+        separacion = limpiar_dato(ent_sep.get())
+        p_ini = limpiar_dato(ent_pct.get())
+        m_ini = int(limpiar_dato(ent_m_ini.get()))
+        m_lote = int(limpiar_dato(ent_m_lote.get()))
+        
+        # Fecha de Negociación
+        f_neg = ent_fecha.get()
+        dia, mes, anio = map(int, f_neg.split('/'))
+        fecha_base = datetime.date(anio, mes, dia)
 
-st.title("AGENCIA DE VENTAS NUEVA ILUSION")
+        # Cálculos de Negocio
+        base_calc = precio - bono
+        v_cuota_inicial = base_calc * (p_ini / 100)
+        s_cuota_inicial = v_cuota_inicial - separacion
+        v_fin_lote = base_calc - v_cuota_inicial
+        
+        c_mes_ini = s_cuota_inicial / m_ini if m_ini > 0 else 0
+        c_mes_lote = v_fin_lote / m_lote if m_lote > 0 else 0
 
-# 2. Formulario Unificado (El botón DEBE estar dentro del bloque 'with')
-with st.form(key="form_ilusion_final_definitivo"):
-    
-    st.markdown('<p class="pregunta">1. Nombre del proyecto</p>', unsafe_allow_html=True)
-    proyecto = st.text_input(" ", placeholder="Ubicación del lote", key="k_proy")
+        # Actualizar Etiquetas de Resultados
+        lbl_v_ini.config(text=f"VALOR CUOTA INICIAL: ${v_cuota_inicial:,.0f}")
+        lbl_s_ini.config(text=f"SALDO CUOTA INICIAL: ${max(0, s_cuota_inicial):,.0f}")
+        lbl_c_ini.config(text=f"CUOTA MENSUAL INICIAL: ${c_mes_ini:,.0f}")
+        lbl_v_lote.config(text=f"VALOR FINANCIADO LOTE: ${v_fin_lote:,.0f}")
 
-    st.markdown('<p class="pregunta">2. Nombre del Cliente</p>', unsafe_allow_html=True)
-    cliente = st.text_input("  ", placeholder="Nombre del comprador", key="k_cli")
+        # Llenar Cronograma sin índices laterales
+        for row in tabla.get_children(): tabla.delete(row)
+        
+        # Fase Inicial
+        for i in range(1, m_ini + 1):
+            f_p = (fecha_base + datetime.timedelta(days=30*i)).strftime("%d/%m/%Y")
+            tabla.insert("", "end", values=(f"Cuota {i} de pago inicial", f_p, f"${c_mes_ini:,.0f}"))
+            
+        # Fase Lote
+        for j in range(1, m_lote + 1):
+            f_p = (fecha_base + datetime.timedelta(days=30*(m_ini+j))).strftime("%d/%m/%Y")
+            tabla.insert("", "end", values=(f"Cuota {j} del lote", f_p, f"${c_mes_lote:,.0f}"))
 
-    st.markdown('<p class="pregunta">3. Precio de lista del lote ($)</p>', unsafe_allow_html=True)
-    precio_lista = st.number_input("   ", min_value=0.0, step=1000000.0, format="%.0f", key="k_precio")
+    except Exception as e:
+        messagebox.showerror("Revisa los números", "Asegúrate de:\n1. No dejar campos vacíos.\n2. Fecha en formato DD/MM/AAAA.\n3. Usar solo números.")
 
-    # Lógica de Descuento (Bono) solicitada
-    st.markdown('<p class="pregunta" style="color:white;">4. ¿Aplica bono de descuento especial?</p>', unsafe_allow_html=True)
-    aplica_bono = st.radio("    ", ["No", "Si"], horizontal=True, key="k_radio")
-    
-    valor_bono = 0.0
-    if aplica_bono == "Si":
-        st.markdown('<p class="pregunta" style="color:white;">Digite el valor del descuento ($)</p>', unsafe_allow_html=True)
-        valor_bono = st.number_input("     ", min_value=0.0, step=100000.0, format="%.0f", key="k_val_bono")
+# Interfaz Principal
+root = tk.Tk()
+root.title("AGENCIA DE VENTAS NUEVA ILUSION")
+root.geometry("600x850")
+root.configure(bg=COLOR_FONDO)
 
-    st.markdown('<p class="pregunta">5. Valor de Separación (Abono hoy) ($)</p>', unsafe_allow_html=True)
-    v_sep = st.number_input("      ", min_value=0.0, step=100000.0, format="%.0f", key="k_sep")
+# Campos de Entrada (Estilo compacto)
+def crear_label(texto):
+    return tk.Label(root, text=texto, bg=COLOR_FONDO, fg=COLOR_DORADO, font=("Arial", 10, "bold"))
 
-    st.markdown('<p class="pregunta">6. Porcentaje de Cuota Inicial (%)</p>', unsafe_allow_html=True)
-    p_ini = st.number_input("       ", min_value=0.0, max_value=100.0, value=30.0, key="k_pct")
+crear_label("1. Nombre del proyecto:").pack(pady=2)
+ent_proy = tk.Entry(root, justify='center'); ent_proy.pack()
 
-    st.markdown('<p class="pregunta">7. Meses por financiar cuota inicial</p>', unsafe_allow_html=True)
-    m_ini = st.number_input("        ", min_value=1, value=12, key="k_m_ini")
+crear_label("2. Nombre del Cliente:").pack(pady=2)
+ent_cli = tk.Entry(root, justify='center'); ent_cli.pack()
 
-    st.markdown('<p class="pregunta">8. Meses a financiar saldo del lote</p>', unsafe_allow_html=True)
-    m_lote = st.number_input("         ", min_value=1, value=36, key="k_m_lote")
+crear_label("3. Precio de lista del lote ($):").pack(pady=2)
+ent_precio = tk.Entry(root, justify='center'); ent_precio.pack()
 
-    st.markdown('<p class="pregunta">9. Fecha de negociacion</p>', unsafe_allow_html=True)
-    f_negociacion = st.date_input("          ", value=datetime.date.today(), key="k_fecha")
+crear_label("4. ¿Aplica bono de descuento especial?").pack(pady=2)
+var_bono = tk.StringVar(value="No")
+tk.Radiobutton(root, text="No", variable=var_bono, value="No", bg=COLOR_FONDO, fg="white", selectcolor="#19376D").pack()
+tk.Radiobutton(root, text="Si", variable=var_bono, value="Si", bg=COLOR_FONDO, fg="white", selectcolor="#19376D").pack()
 
-    # BOTÓN DENTRO DEL FORMULARIO (Elimina el error rojo)
-    btn_ejecutar = st.form_submit_button(label="GENERAR ESTRUCTURA DE NEGOCIO")
+crear_label("Digite valor del descuento ($):").pack()
+ent_bono = tk.Entry(root, justify='center'); ent_bono.insert(0, "0"); ent_bono.pack()
 
-# 3. Presentación de Resultados y Cronograma
-if btn_ejecutar:
-    base_calculo = precio_lista - valor_bono
-    v_cuota_inicial_total = base_calculo * (p_ini / 100)
-    saldo_cuota_inicial = v_cuota_inicial_total - v_sep
-    valor_financiado_lote = base_calculo - v_cuota_inicial_total
-    
-    cuota_mensual_ini = saldo_cuota_inicial / m_ini if saldo_cuota_inicial > 0 else 0
-    cuota_mensual_lote = valor_financiado_lote / m_lote
+crear_label("5. Valor de Separación (Abono hoy) ($):").pack(pady=2)
+ent_sep = tk.Entry(root, justify='center'); ent_sep.pack()
 
-    st.divider()
-    st.markdown(f"## 📍 PROYECTO: {proyecto.upper()}")
-    
-    # Métricas con los nombres solicitados
-    c1, c2 = st.columns(2)
-    with c1:
-        st.metric("VALOR CUOTA INICIAL", f"${v_cuota_inicial_total:,.0f}")
-        st.metric("SALDO CUOTA INICIAL", f"${max(0, saldo_cuota_inicial):,.0f}")
-    with c2:
-        st.metric("CUOTA MENSUAL INICIAL", f"${cuota_mensual_ini:,.0f}")
-        st.metric("VALOR FINANCIADO LOTE", f"${valor_financiado_lote:,.0f}")
+crear_label("6. Porcentaje de Cuota Inicial (%):").pack(pady=2)
+ent_pct = tk.Entry(root, justify='center'); ent_pct.insert(0, "30"); ent_pct.pack()
 
-    st.write("---")
-    st.write("### 📅 Cronograma de Pago Detallado (Letras en Blanco)")
-    
-    plan_pagos = []
-    dia_fijo = f_negociacion.day
+crear_label("7. Meses por financiar cuota inicial:").pack(pady=2)
+ent_m_ini = tk.Entry(root, justify='center'); ent_m_ini.pack()
 
-    def calcular_fecha(meses_futuros):
-        mes_p = (f_negociacion.month + meses_futuros - 1) % 12 + 1
-        anio_p = f_negociacion.year + (f_negociacion.month + meses_futuros - 1) // 12
-        ult_dia = calendar.monthrange(anio_p, mes_p)[1]
-        return datetime.date(anio_p, mes_p, min(dia_fijo, ult_dia)).strftime('%d/%m/%Y')
+crear_label("8. Meses a financiar saldo del lote:").pack(pady=2)
+ent_m_lote = tk.Entry(root, justify='center'); ent_m_lote.pack()
 
-    # FASE 1: Cuotas de Pago Inicial
-    if saldo_cuota_inicial > 0:
-        for i in range(1, int(m_ini) + 1):
-            plan_pagos.append({"Etapa": f"Cuota {i} de pago inicial", "Fecha": calcular_fecha(i), "Valor": f"${cuota_mensual_ini:,.0f}"})
-    
-    # FASE 2: Cuotas del Lote
-    for j in range(1, int(m_lote) + 1):
-        plan_pagos.append({"Etapa": f"Cuota {j} del lote", "Fecha": calcular_fecha(int(m_ini) + j), "Valor": f"${cuota_mensual_lote:,.0f}"})
+crear_label("9. Fecha de negociacion (DD/MM/AAAA):").pack(pady=2)
+ent_fecha = tk.Entry(root, justify='center'); ent_fecha.insert(0, datetime.date.today().strftime("%d/%m/%Y")); ent_fecha.pack()
 
-    # Tabla sin números laterales (index) y texto blanco
-    st.table(pd.DataFrame(plan_pagos))
-    st.caption("Plan de pagos generado para la AGENCIA DE VENTAS NUEVA ILUSION.")
+tk.Button(root, text="GENERAR ESTRUCTURA DE NEGOCIO", command=calcular, bg=COLOR_DORADO, font=("Arial", 10, "bold")).pack(pady=15)
+
+# Métricas de Resultados
+lbl_v_ini = tk.Label(root, text="", bg=COLOR_FONDO, fg=COLOR_DORADO, font=("Arial", 11, "bold"))
+lbl_v_ini.pack()
+lbl_s_ini = tk.Label(root, text="", bg=COLOR_FONDO, fg=COLOR_DORADO, font=("Arial", 11, "bold"))
+lbl_s_ini.pack()
+lbl_c_ini = tk.Label(root, text="", bg=COLOR_FONDO, fg=COLOR_DORADO, font=("Arial", 11, "bold"))
+lbl_c_ini.pack()
+lbl_v_lote = tk.Label(root, text="", bg=COLOR_FONDO, fg=COLOR_DORADO, font=("Arial", 11, "bold"))
+lbl_v_lote.pack()
+
+# Tabla de Cronograma
+tabla = ttk.Treeview(root, columns=("Etapa", "Fecha", "Valor"), show="headings", height=10)
+tabla.heading("Etapa", text="ETAPA DE PAGO")
+tabla.heading("Fecha", text="FECHA")
+tabla.heading("Valor", text="VALOR")
+tabla.pack(pady=10, fill="x", padx=20)
+
+root.mainloop()
